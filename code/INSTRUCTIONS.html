@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>INSTRUCTIONS</title>
+  <style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">INSTRUCTIONS</h1>
+</header>
+<h1 id="nlp-homework-6-tagging">NLP Homework 6: Tagging</h1>
+<h2 id="setup-and-files">Setup and Files</h2>
+<p>As in previous homeworks, you can activate the environment anytime
+using</p>
+<pre><code>conda activate nlp-class</code></pre>
+<p>After reading the reading handout, you probably want to study the
+files in this order. <strong>Boldface</strong> indicates parts of the
+code that you will write.</p>
+<ul>
+<li><code>integerize.py</code> – converts words and tags to ints that
+can be used to index PyTorch tensors (we’ve used this before)</li>
+<li><code>corpus.py</code> – manage access to a corpus (compare
+<code>Probs.py</code> on the lm homework)</li>
+<li><code>lexicon.py</code> – construct a fixed matrix of word
+attributes, perhaps including <strong>your own features</strong></li>
+<li><code>hmm.py</code> – parameterization, <strong>Viterbi
+algorithm</strong>, <strong>forward algorithm</strong>, training</li>
+<li><code>eval.py</code> – measure tagging accuracy</li>
+<li><code>test_ic.py</code> – uses the above to test Viterbi tagging,
+supervised learning, unsupervised learning on ice cream data</li>
+<li><code>test_en.py</code> – uses the above to train on larger English
+data and evaluate on accuracy</li>
+<li><code>tag.py</code> – <strong>your command-line system</strong></li>
+<li><code>crf.py</code> – <strong>support for CRFs</strong> (start by
+copying your finished <code>hmm.py</code>)</li>
+</ul>
+<p>In the last question, you will add support for CRFs.</p>
+<p>You can experiment with these modules at the Python prompt. For
+example:</p>
+<pre><code>&gt;&gt;&gt; from pathlib import Path
+&gt;&gt;&gt; from corpus import *
+&gt;&gt;&gt; c = TaggedCorpus(Path(&quot;ictrain&quot;))
+&gt;&gt;&gt; c.tagset
+&gt;&gt;&gt; list(c.tagset)
+&gt;&gt;&gt; list(c.vocab)
+&gt;&gt;&gt; iter = c.get_sentences()
+&gt;&gt;&gt; next(iter)
+&gt;&gt;&gt; next(iter)</code></pre>
+<p>For some of the questions in the assignment, it will be easier for
+you to work from the Python prompt or within a short script that
+encapsulates the same functionality. You could also try working in a
+Jupyter notebook while you’re familiarizing yourself with the pieces, if
+you’re familiar with Jupyter and prefer that style.</p>
+<p>Your deliverables are <em>written answers to the questions</em>, plus
+<em>Python scripts</em> (not notebooks or printouts of your interpreter
+session).</p>
+<h2 id="the-hmm">The HMM</h2>
+<h3 id="step-0">Step 0</h3>
+<p>Later we will learn HMM parameters from data. To warm up, however,
+it’ll help to compare against the <a
+href="http://cs.jhu.edu/~jason/465/hw-tag/hmm.xls">ice cream
+spreadsheet</a> that we covered in class. You can hard-code the initial
+spreadsheet parameters into your HMM, something like this:</p>
+<pre><code>&gt;&gt;&gt; hmm = HiddenMarkovModel(...)
+&gt;&gt;&gt; hmm.A = torch.Tensor(...)   # transition matrix
+&gt;&gt;&gt; hmm.B = torch.Tensor(...)   # emission matrix</code></pre>
+<p>You can read the starter code for examples of how to create a
+<code>Tensor</code>. You may also benefit from <a
+href="https://pytorch.org/tutorials/beginner/nlp/pytorch_tutorial.html">PyTorch’s
+own tutorial</a>. You can set individual elements of a
+<code>Tensor</code> the way you’d expect:</p>
+<pre><code>&gt;&gt;&gt; my_tensor[3, 5] = 8.0</code></pre>
+<p>Think about how to get those indices, though. (Where in
+<code>hmm.B</code> is the parameter for emitting <code>3</code> while in
+state <code>H</code>?) You may want to use the corpus’s
+<code>integerize_tag</code> and <code>integerize_word</code> functions
+or access the integerizers directly.</p>
+<h3 id="step-1">Step 1</h3>
+<p>Implement the <code>viterbi_tagging</code> method in
+<code>hmm.py</code> as described in the handout. Structurally, this
+method is very similar to the forward algorithm. It has a handful of
+differences, though:</p>
+<ul>
+<li>You’re taking the max instead of the sum over possible predecessor
+tags.</li>
+<li>You must track backpointers and reconstruct the best path in a
+backward pass.</li>
+<li>This function returns a sentence tagged with the highest-probability
+tag sequence, instead of returning a (log-)probability.</li>
+</ul>
+<p>Remember to handle the BOS and EOS tags appropriately.</p>
+<p>Run your implementation on the <code>icraw</code> data, using the
+hard-coded parameters from above. To do this, you may want to look at
+how <code>test_ic.py</code> calls <code>viterbi_tagging</code>.</p>
+<p>Check your results against the <a
+href="http://cs.jhu.edu/~jason/465/hw-tag/hmm-viterbi.xls">Viterbi
+version of the spreadsheet</a>, Do your µ values match, for each word,
+if you print them out along the way? When you follow the backpointers,
+do you get <code>HHHHHHHHHHHHHCCCCCCCCCCCCCCHHHHHH</code> as you should?
+(These are rhetorical questions. The only questions you need to turn in
+answers to are in the handout.)</p>
+<p>Try out automatic evaluation: compare your Viterbi tagging to the
+correct answer in <code>icdev</code>, using an appropriate method from
+<code>eval.py</code>.</p>
+<h3 id="step-2">Step 2</h3>
+<p>The <code>train</code> method locally maximizes the (log-)likelihood
+of the parameters, starting from the current parameter values (initially
+random when the HMM is constructed).</p>
+<p>There’s just one thing missing: the actual computation of the
+log-likelihood. You should implement the <code>log_forward</code> method
+in <code>hmm.py</code>.</p>
+<p>For this step, it’s enough to implement only the special case where
+the tags are fully observed. This will be enough to handle the
+complete-data log likelihood for supervised training. This is simply the
+log of the first formula in your reading handout.</p>
+<p>At this point, you should be able to run the initial part of
+<code>test_ic.py</code>, instead of hard-coding the probabilities.
+Supervised training on <code>icsup</code> will be pretty fast and should
+converge to the parameters from the forward-backward spreadsheet.</p>
+<p>Notice that <code>test_ic.py</code> uses one-hot word embeddings,
+allowing each word to have different emission parameters, just as on the
+spreadsheet. This is discussed in the “word embeddings” section of the
+reading handout.</p>
+<p>Training by SGD is able to handle arbitrary embeddings. In this
+simple case, however, it’s just a slow way of getting to count ratios
+that would have been trivial to compute directly. (The spreadsheet uses
+count ratios in later iterations.)</p>
+<h3 id="step-3">Step 3</h3>
+<p>You implemented only a special case of <code>log_forward</code>. Go
+ahead and make it more general, so that it can also deal with
+unsupervised data (where tags are <code>None</code>). This should not
+change your results from the previous step.</p>
+<p>You should now be able to run all of <code>test_ic.py</code>, which
+tries out the forward algorithm on <code>icraw</code> and then uses it
+for training.</p>
+<p>First, check the results of the initial forward pass against
+iteration 0 of the <a
+href="http://cs.jhu.edu/~jason/465/hw-tag/hmm.xls">forward-backward
+spreadsheet</a>. Do your α values match, for each word?</p>
+<h3 id="step-4">Step 4</h3>
+<p>If you continue to the last step of <code>test_ic.py</code> and train
+on <code>icraw</code>, using the forward algorithm repeatedly, do you
+eventually get to the same parameters as EM does?</p>
+<p>This is a good time to stop and check for speed. When training on
+<code>icraw</code>, our own implementation was able to process 60 to 90
+unsupervised ‘training sentences’ per second on a 2017 laptop with 2 1.8
+GHz Intel cores. (This is the iterations per second, or
+<code>it/s</code>, reported by the <code>tqdm</code> progress bar.) It’s
+at about 120 it/s on a 2020 laptop with 4+ cores. If your code is
+markedly slower, you’ll probably want to speed it up before we move to a
+larger dataset – probably by making less use of loops and more use of
+fast tensor operations.</p>
+<p>(It’s sad that this SGD code is so much slower than the EM algorithm
+implemented on the spreadsheet. Of course, the SGD method is more
+general. The EM code is fast only when the M step is easy – in the
+special case on the spreadsheet, the M step can get the optimal new
+probabilities simply by dividing (fractional) count ratios, rather than
+by using a gradient. But we’ll need a gradient anyway when we’re using
+pretrained word embeddings.)</p>
+<p><em>Note:</em> Matrix multiplication is available in PyTorch (and
+numpy) using the <code>matmul</code> function. In the simplest case, it
+can be invoked with the <a
+href="https://www.python.org/dev/peps/pep-0465/">infix operator</a>
+<code>C = A @ B</code>, which works the way you’d expect from your
+linear algebra class. A different syntax, <code>D = A * B</code>,
+performs <em>element-wise</em> multiplication of two matrices whose
+entire shapes match. (It also works if they’re “<a
+href="https://pytorch.org/docs/stable/notes/broadcasting.html">broadcastable</a>,”
+like if <code>A</code> is 1x5 and <code>B</code> is 3x5. See also <a
+href="https://numpy.org/doc/stable/user/basics.broadcasting.html">here</a>.)</p>
+<h3 id="step-5">Step 5</h3>
+<p>Now let’s move on to real data! Try out the workflow in
+<code>test_en.py</code>. If you come across numerical stability problems
+from working with products of small probabilities, fix them using one of
+the methods in the “Numerical Stability” section of the reading
+handout.</p>
+<h3 id="step-6">Step 6</h3>
+<p>Now it’s time to package up your work for the autograder. Make a
+command-line script with good hyperparameters that can be run as
+follows:</p>
+<pre><code>$ python3 tag.py &lt;eval_file&gt; --model &lt;model_file&gt; --train &lt;training_files&gt;</code></pre>
+<p>This should evaluate an HMM on the <code>eval file</code>, using the
+<em>error rate</em> of a Viterbi tagger. Where does the HMM come from?
+It is loaded from the <code>model_file</code> and then trained further
+on the <code>training_files</code> until the error rate metric is no
+longer improving. The improved model is saved back to the
+<code>model_file</code> at the end.</p>
+<p>If the <code>model_file</code> doesn’t exist yet or isn’t provided,
+then the script should create a new randomly initialized HMM. If no
+<code>training_files</code> are provided, then the model will not be
+trained further.</p>
+<p>Thus, our autograder will be able to replicate roughly the
+<code>test_en.py</code> workflow like this:</p>
+<pre><code>$ python3 tag.py endev --model your_hmm.pkl --train ensup        # supervised training
+$ python3 tag.py endev --model your_hmm.pkl --train ensup enraw  # semi-supervised training</code></pre>
+<p>and it then will be able to evaluate the error rate of your saved
+model on a test file like this:</p>
+<pre><code>$ python3 tag.py ensup  --model your_hmm.pkl  # error rate on training data
+$ python3 tag.py entest --model your_hmm.pkl  # error rate on held-out test data</code></pre>
+<p>Your <code>tag.py</code> should also output the Viterbi taggings of
+all sentences in the <code>eval_file</code> to a text file, in the usual
+format. For example, if the <code>eval_file</code> is called
+<code>endev</code>, then it should create a file called
+<code>endev.output</code> with lines like</p>
+<pre><code>Papa/N ate/V the/D caviar/N with/P a/D spoon/N ./.</code></pre>
+<p>As it works, <code>tag.py</code> is free to print additional text to
+the standard error stream, e.g., by using Python’s library. This can
+report other information that you may want to see, including the tags
+your program picks, its perplexity and accuracy as it goes along,
+various probabilities, etc. Anything printed to standard error will be
+ignored by the autograder; use it however you’d like. Maybe print a few
+kind words to the TAs.</p>
+<p>You’re entirely welcome (and encouraged) to add other command line
+parameters. This will make your hyperparameter searching much easier;
+you can write a script that loops over different values to automate your
+search. You may also be able to parallelize this search. Make sure that
+your submitted code has default values set how you want them, so that we
+run the best version. (Don’t make the autograder run your hyperparameter
+search.)</p>
+<h3 id="step-7">Step 7</h3>
+<p>Your performance so far will be rather bad – under 90%. That’s worse
+than the simple baseline method described in the reading handout: we
+implemented a version of that method and found that it got 91.5%
+accuracy on <code>endev</code> data.</p>
+<p>So, make some improvement to your HMM! When <code>tag.py</code>
+creates a new model, it should use the improved HMM if the
+<code>--awesome</code> flag is specified. (Any model that is loaded or
+saved should already know whether it is awesome; typically an awesome
+model will use a different class and have a different set of parameters.
+You probably want to define <code>AwesomeHMM</code> as a subclass of
+<code>HiddenMarkovModel</code>.)</p>
+<p>Some options for improving performance are given in the handout. Your
+goal is to beat the baseline method. If you decide to experiment with
+features, check out <code>lexicon.py</code> for some ideas.</p>
+<p>Evaluate the accuracy of your trained model on both
+<code>ensup</code> and <code>endev</code>, for example by using
+<code>vtag.py</code>. It’s actually possible to do quite well on
+training data (high 90’s), with decent performance on held-out data as
+well (low 90’s).</p>
+<p>Also do an ablation study – turn something off in your
+<code>--awesome</code> tagger and see whether that hurts. The easiest
+option is to “turn off the transition probabilities” by giving the flag
+<code>unigram=True</code> when you construct your
+<code>HiddenMarkovModel</code>. How does this ablation affect the
+different categories of accuracy? Why?</p>
+<h3 id="step-8-extra-credit">Step 8 (<strong>extra credit</strong>)</h3>
+<p>Try implementing posterior decoding as described in the reading
+handout. This will rely on your implementation of the forward algorithm.
+As the reading handout explains, there are two options:</p>
+<ul>
+<li>Implement the backward pass yourself.<br />
+</li>
+<li>An awesome but tricky alternative is to let PyTorch do the work for
+you with its backward pass, which will give you both β values (a good
+warmup) and posterior marginal probabilities. (The tricky part is
+finding where the relevant values are stored, without ballooning the
+storage space required.)</li>
+</ul>
+<p>The posterior marginal probabilities for the <code>icraw</code> data
+are shown on the spreadsheet. You can use these to check your code.</p>
+<p>Alter your <code>vtag</code> script so that the output instead of
+Viterbi decoding. On the English data, how much better does posterior
+decoding do, in terms of accuracy? Do you notice anything odd about the
+outputs?</p>
+<h2 id="the-crf">The CRF</h2>
+<p>We constructed a lot of the <code>HiddenMarkovModel</code> class for
+you. Now it’s your turn to build a model class!</p>
+<p>Implement a CRF with RNN-based features, as discussed in the reading
+handout. You can use <code>HiddenMarkovModel</code> as a starting
+point.</p>
+<p>Only the model is changing. So the supporting files like
+<code>corpus.py</code>, <code>lexicon.py</code>, and
+<code>eval.py</code> should not have to change. The <code>train</code>
+method should also not have to change, although you might want to choose
+different hyperparameters for its arguments when you are training a
+CRF.</p>
+<h3 id="step-0-1">Step 0</h3>
+<p>Start by copying your <code>hmm.py</code> to <code>crf.py</code>, and
+rename the <code>HiddenMarkovModel</code> class in
+<code>crf.py</code>.</p>
+<p>Improve <code>tag.py</code> so that if it has the <code>--crf</code>
+flag, it will use a CRF instead of an HMM.</p>
+<p>For trying out your code, you may also want to modify
+<code>test_ic</code> and <code>test_en</code> so that they use the CRF
+instead of the HMM.</p>
+<h3 id="step-1-1">Step 1</h3>
+<p>Edit your new class so that it maximizes the <em>conditional</em>
+log-likelihood.</p>
+<p>That is, the <code>log_prob</code> function used in training should
+now return the log of the <em>conditional</em> probability p(y | x).
+<em>Hint:</em> This will have to call <code>log_forward</code> twice
+…</p>
+<p>This is discriminative training. Does it get better accuracy than
+your HMM on <code>endev</code> when trained on <code>ensup</code>?</p>
+<p>There is no point in training on <code>enraw</code>. As usual, if y
+is not fully observed, then <code>log_prob</code> should marginalize
+over the possible values of y, as usual.<br />
+If y is <em>completely</em> unobserved, then <code>log_prob</code> will
+always return the log of sum_y p(y | x) = 1. The gradient of this
+constant with respect to the model parameters is 0. What happens in
+practice when you include <code>enraw</code> in the training data?</p>
+<h3 id="step-2-1">Step 2</h3>
+<p>So far, your CRF is just a discriminatively trained HMM. The
+<code>A</code> and <code>B</code> matrices still hold conditional
+probabilities that sum to 1. Change the computation so that these
+matrices are computed from the parameters using <code>exp</code> instead
+of <code>softmax</code>, so that their entries can be arbitrary positive
+numbers (“potentials”).</p>
+<p>Now you have a proper CRF, although it turns out that you have not
+actually added any expressive power. Try training it. Does it work any
+better?</p>
+<h3 id="step-3-1">Step 3</h3>
+<p>Make your CRF use bidirectional RNN features as suggested in the
+reading handout (the section on CRF parameterization). Does this improve
+your tagging accuracy?</p>
+<p>Some things you’ll have to do:</p>
+<ul>
+<li><p>Instead of computing A and B matrices from the parameters at the
+start of every minibatch, you’ll have to compute fresh A and B matrices
+at every position j of every sentence. These are the <em>contextual</em>
+transition and emission probabilities.</p></li>
+<li><p>You’ll first want to compute the RNN vectors h and h’ vectors at
+all positions of the sentence, since those will help you compute the
+necessary A and B matrices. You might consider putting that RNN code
+into another function, but that’s up to you.</p></li>
+<li><p>You’ll need to add parameters to the model to help you compute
+all these things (the various θ, M, and U parameters described in the
+reading handout). <em>Implementation hint:</em> Remember to add these to
+your model as <code>nn.Parameter</code> objects, so that they’re listed
+in <code>your_model.parameters()</code> and passed to the SGD
+optimizer.</p></li>
+<li><p>You can use one-hot embeddings for the tag embeddings, or if you
+prefer, you can make the tag embeddings be learned parameters,
+too.</p></li>
+<li><p>The word embeddings come from <code>lexicon.py</code> as before.
+As with the HMM, you could fine-tune them, or not.</p></li>
+</ul>
+<h2 id="using-kaggle">Using Kaggle</h2>
+<p>Assuming you’ve vectorized your code as the reading handout urged you
+to do, you can optionally use a Kaggle GPU to speed up your training and
+tagging. Follow the <a
+href="https://www.cs.jhu.edu/~jason/465/hw-lm/code/INSTRUCTIONS.html#using-kaggle">instructions</a>
+from Homework 3; just change <code>hw-lm</code> to <code>hw-tag</code>
+throughout. In particular, the dataset for this homework is at <a
+href="https://www.kaggle.com/datasets/jhunlpclass/hw-tag-data"
+class="uri">https://www.kaggle.com/datasets/jhunlpclass/hw-tag-data</a>.
+You will eventually need to <em>also</em> add the Homework 3 dataset <a
+href="https://www.kaggle.com/datasets/jhunlpclass/hw-lm-data"
+class="uri">https://www.kaggle.com/datasets/jhunlpclass/hw-lm-data</a>
+to your notebook so that you can get a lexicon of word embeddings.</p>
+<h2 id="what-to-submit">What to submit</h2>
+<p>You should submit the following files under <strong>Assignment 6 -
+Programming</strong>:</p>
+<ul>
+<li><code>tag.py</code></li>
+<li><code>hmm.py</code></li>
+<li><code>eval.py</code></li>
+<li><code>crf.py</code></li>
+<li><code>corpus.py</code></li>
+<li><code>lexicon.py</code></li>
+<li><code>ic_hmm.pkl</code> (ice-cream supervised)</li>
+<li><code>ic_hmm_raw.pkl</code> (ice-cream semi-supervised)</li>
+<li><code>en_hmm.pkl</code> (english supervised)</li>
+<li><code>en_hmm_raw.pkl</code> (english semi-supervised)</li>
+<li><code>en_hmm_awesome.pkl</code> (english awesome)</li>
+<li><code>ic_crf.pkl</code> (ice-cream supervised with crf)</li>
+<li><code>en_crf.pkl</code> (english supervised crf)</li>
+<li><code>en_crf_raw.pkl</code> (english supervised crf + enraw)</li>
+<li><code>en_crf_birnn.pkl</code> (english supervised birnn plus
+improvement)</li>
+<li>Any additional dependencies of your code, such as
+<code>integerize.py</code> and <code>logsumexp_safe.py</code></li>
+</ul>
+<p>Try your code out early as it can take a bit of time to run the
+autograder. Autograder should be good but please let us know if anything
+is broken so we can fix it ASAP.</p>
+<p>Additional Note: Please don’t submit the output files that show up in
+the autograder’s feedback message. Rather, these will be produced by
+running your code! If you do submit them, the autograder will not grade
+your assignment.</p>
+</body>
+</html>
