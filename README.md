@@ -2,37 +2,45 @@
 # 1
 ## a
 ### i
-p(H|Start)*p(1|H) 0.5*0.1 = 0.05
-
-before: α(H) * β(H)/(α(H) * β(H) + α(C) * β(C)) = 0.871
-after: α(H) * β(H)/(α(H) * β(H) + α(C) * β(C)) = 0.491
-
-before
-after: P(HHH|133) = p_day1(H) * day2_p(H) * day3_p(H) = 0.491*0.918*0.975=0.439
-
+before: P_day1(H) =  0.871</br>
+after: P_day1(H) = 0.491</br>
 
 
 ### ii
-before: 0.1*(p(H|H)*p(3|H)+p(H|C)*p(3|H)) = 0.1*(0.8*0.7+0.1*0.7)=0.0063
-after: 0.05*(p(H|H)*p(3|H)+p(H|C)*p(3|H)) = 0.05*(0.8*0.7+0.1*0.7)=0.0035
+before: P_day2(H) = 0.977</br>
+after: P_day2(H) = 0.918</br>
+This is record by the P(->H) on day 2 cell (k28).</br>
 
+The change to day 1 data affects the forward probability of day 2 since day 1 is before day 2. For day 2, α(H) decreases and α(C) increases. This can be explained by the formular:
 
+```
+before: α(H) = P(C|start) P(2|C) * P(H|C) P(3|H) + P(H|start) P(2|H) * P(H|H) P(3|H)
+```
+```
+after: α(H) = P(C|start) P(1|C) * P(H|C) P(3|H) + P(H|start) P(1|H) * P(H|H) P(3|H)
+```
+In our initial emission probability, P(1|C) > P(2|C) and P(1|H) < P(2|H), so the probability of paths to a C state at day 1 increase and the probability of paths to a H decreases. 
 
-before: 0.918
-after: 0.977
+Furthermore, since the probability of trasition from H to H is higher than that of C to H (P(H|H) > P(H|C)). This means for the two sources of path to day 2 H, which is day 1 C and day 1 H, the latter one has more weight. Thus the overall α(H) at day 2 decreases.
 
-p(->H) on day2
+Similar analysis for why α(C) increases.
 
+Thus the probability of day 2 is hot decreases since it's calculated by 
+```
+P(->H) = α(H)β(H) / (α(H)β(H) + α(C)β(C))
+```
+and backward probability remain unchanged.
 
-### ii
-before 233: p_1(H) = 1, p_2(H) = 0.995
-after 133: p_1(H) = 0, p_2(H) = 0.557
+### iii
+before: P_day1(H) = 1.0, P_day2(H) = 0.995</br>
+after: P_day1(H) = 0.0, P_day2(H) = 0.557</br>
 
 before when there are two ice-creams at day one, the probability of day one is a hot day is high. the probability of day 2 being a hot day is: P(H|H)*P_day1(H) + P(H|C)*P_day1(C). As p(H|H) and p(H|C) stay the same in the given chart, changing the ice cream in day one results in lowering the probability of a hot day, such that 
 
 P(HHH|133) = p(H|start)*p(1|H) * p(H|H)*p(3|H) * p(H|H)*p(3|H)
             = 0.5 * 0.1 * 
 P(CHH|133) = p(C|start)*p(1|C) * p(H|C)*p(3|H) * p(H|H)*p(3|H)
+
 
 
 ## b
