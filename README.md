@@ -55,3 +55,9 @@ Since p(1∣H)=0 is enforced, there is no opportunity for the model to adjust th
 The state corresponding to the initial/start state will have a β probability equal to the total probability of the sentence. This is because the β probability for the initial state captures the probability of observing the entire sequence starting from the initial state.
 
 ### ii
+H constituent represents a state/tag in the HMM. It likely corresponds to a specific state in the trellis used for tagging sequences. <br>
+The probability of the rule H -> 1 C is the likelihood of transitioning from state H to state C and emitting 1 (a transition from a hot day to a cold day after eating one ice cream). P(1|C)*P(C|H) <br>
+H->ε represents the transition from a hot day to stop. P(STOP|H) <br>
+Reason:
+- Capture more complex relationships: The more complicated parse on the right can be more expressive in modeling the underlying patterns in the sequence, so for example it can represent the non-terminals.
+- Handle ambiguities or variability:
