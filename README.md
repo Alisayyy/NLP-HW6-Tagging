@@ -60,4 +60,15 @@ The probability of the rule H -> 1 C is the likelihood of transitioning from sta
 H->ε represents the transition from a hot day to stop. P(STOP|H) <br>
 Reason:
 - Capture more complex relationships: The more complicated parse on the right can be more expressive in modeling the underlying patterns in the sequence, so for example it can represent the non-terminals.
-- Handle ambiguities or variability:
+- Handle ambiguities or variability
+
+# 2
+## a
+$α_{BOS}(0)$ is the forward probability of being in the start state, $β_{EOS}(n)$ is the starting point for backward algorithm. By setting the start point to 1, the sequence have start and stop state both equals 1 which represent the total probability of the sequence to be 1. The algorithm initalizes the probaility of starting the sequence, so that the distribution is normalized.
+
+## b
+Perplexity represents how well a model predicts a sample. When training on sup file and evaluate on a held-out raw file, the model has learned from the supervised training data. And as the raw file shares similar patterns, the model can predict the correct patterns. <br>
+But when evulate on held-out dev files, the model finds its own way to learn the pattern from these diverse set of training data. Therefore, it might deviate in some way from the distribution seen during training. The higher perplexity suggest that the model struggles more to predict the held-out dev set. <br>
+The perplexity on a held-out raw file is more important because it represents how will the model perform on real-world data.
+
+## c
