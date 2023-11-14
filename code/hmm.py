@@ -200,14 +200,22 @@ class HiddenMarkovModel(nn.Module):
         argument, to help with integerization and check that we're 
         integerizing correctly."""
 
-        sent = self._integerize_sentence(sentence, corpus)
+        sent = self._integerize_sentence(sentence, corpus) 
 
         # The "nice" way to construct alpha is by appending to a List[Tensor] at each
         # step.  But to better match the notation in the handout, we'll instead preallocate
         # a list of length n+2 so that we can assign directly to alpha[j].
-        alpha = [torch.empty(self.k) for _ in sent]  
+        alpha = [torch.empty(self.k) for _ in sent]
+        n = len(sent)-2
 
-        raise NotImplementedError   # you fill this in!
+        alpha[0] = torch.ones(self.k) # alpha[0] = 0
+
+        for j in range(1, n+1):
+            alpha[j] = alpha[j-1] @ self.A * self.B[:, sent[j][0]]
+        
+        Z = alpha[-1].sum() # alpha[n+1] = 0
+        
+        return torch.log(Z)   # TODO: you fill this in!
 
     def viterbi_tagging(self, sentence: Sentence, corpus: TaggedCorpus) -> Sentence:
         """Find the most probable tagging for the given sentence, according to the
@@ -228,7 +236,27 @@ class HiddenMarkovModel(nn.Module):
 
         sent = self._integerize_sentence(sentence, corpus)
 
-        raise NotImplementedError   # you fill this in!
+        n = len(sent)-2
+        viterbi = torch.full((len(sent), self.k), -float('inf'))
+        backpointers = torch.zeros(len(sent), self.k, dtype=torch.long)
+
+        viterbi[0] = torch.ones(self.k) # viterbi[0] = 0
+        
+        for j in range(1, n+1):
+            for tj in range(self.k):
+                viterbi[j][tj], backpointers[j][tj] = max((viterbi[j-1][ts] * self.A[ts, tj] * self.B[tj, sent[j][0]], ts) for ts in range(self.k))
+
+        best_last_tag = viterbi[-1].argmax().item()
+
+        #backtrace
+        best_path = [best_last_tag]
+        #for j from n+1 downto 1
+        for j in range(n+1, 0, -1):
+            best_path.append(backpointers[j][best_path[-1]].item())
+
+        best_path.reverse()
+
+        return [sentence[i] for i in best_path]  # TODO: you fill this in!
 
     def train(self,
               corpus: TaggedCorpus,

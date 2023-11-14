@@ -1,6 +1,5 @@
 *.log
 node_modules/
-code/INSTRUCTIONS.html
-code/INSTRUCTIONS.md
 code/environment.yml
 code/test.ipynb
+code/__pycache__
