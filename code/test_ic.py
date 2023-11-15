@@ -26,6 +26,8 @@ log.info(f"Ice cream vocabulary: {list(icsup.vocab)}")
 log.info(f"Ice cream tagset: {list(icsup.tagset)}")
 lexicon = build_lexicon(icsup, one_hot=True)   # one-hot lexicon: separate parameters for each word
 hmm = HiddenMarkovModel(icsup.tagset, icsup.vocab, lexicon)
+# hmm.A = torch.tensor([[0.8, 0.1, 0.1, 0],[0.1, 0.8, 0.1, 0.0],[0.0, 0.0, 0.0, 0.0], [0.5, 0.5, 0.0, 0.0]])   
+# hmm.B = torch.tensor([[0.7, 0.2, 0.1],[0.1, 0.2, 0.7],[0.0, 0.0, 0.0],[0.0, 0.0, 0.0]])   
 
 log.info("*** Current A, B matrices (computed by softmax from small random parameters)")
 hmm.updateAB()   # compute the matrices from the initial parameters (this would normally happen during training).
@@ -41,6 +43,8 @@ hmm.train(corpus=icsup, loss=cross_entropy_loss,
 
 log.info("*** A, B matrices after training on icsup (should approximately "
          "match initial params on spreadsheet [transposed])")
+hmm.A = torch.tensor([[0.8, 0.1, 0.1, 0],[0.1, 0.8, 0.1, 0.0],[0.0, 0.0, 0.0, 0.0], [0.5, 0.5, 0.0, 0.0]])   
+hmm.B = torch.tensor([[0.7, 0.2, 0.1],[0.1, 0.2, 0.7],[0.0, 0.0, 0.0],[0.0, 0.0, 0.0]])   
 hmm.printAB()
 
 # Since we used a low tolerance, that should have gotten us about up to the
