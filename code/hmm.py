@@ -208,12 +208,14 @@ class HiddenMarkovModel(nn.Module):
         alpha = [torch.empty(self.k) for _ in sent]
         n = len(sent)-2
 
-        alpha[0] = torch.ones(self.k) # alpha[0] = 0
+        # alpha[0] = torch.ones(self.k) # alpha[0] = 0
+        alpha[0][self.tagset.index(BOS_TAG)] = 1
 
         for j in range(1, n+1):
             alpha[j] = alpha[j-1] @ self.A * self.B[:, sent[j][0]]
         
         Z = alpha[-1].sum() # alpha[n+1] = 0
+
         
         return torch.log(Z)   # TODO: you fill this in!
 
@@ -235,28 +237,53 @@ class HiddenMarkovModel(nn.Module):
         # code conforms to the type annotations ...)
 
         sent = self._integerize_sentence(sentence, corpus)
-
+        print("sentence")
+        print(sentence)
+        print("sent")
+        print(sent)
+        
         n = len(sent)-2
         viterbi = torch.full((len(sent), self.k), -float('inf'))
         backpointers = torch.zeros(len(sent), self.k, dtype=torch.long)
 
-        viterbi[0] = torch.ones(self.k) # viterbi[0] = 0
+        # viterbi[0] = torch.ones(self.k) # viterbi[0] = 0
+        viterbi[0][self.tagset.index(BOS_TAG)] = 1
+        print("viterbi")
+        print(viterbi)
         
         for j in range(1, n+1):
             for tj in range(self.k):
                 viterbi[j][tj], backpointers[j][tj] = max((viterbi[j-1][ts] * self.A[ts, tj] * self.B[tj, sent[j][0]], ts) for ts in range(self.k))
+                # for ts in range(self.k):
+                #     p1 = self.A[ts][tj] 
+                #     p2 = self.B[tj][sent[j][0]]
+                #     p = p1 * p2
+                #     if viterbi[j][tj] < viterbi[j-1][ts] * p:
+                #         viterbi[j][tj] = viterbi[j-1][ts] * p
+                #         backpointers[j][tj] = ts
 
-        best_last_tag = viterbi[-1].argmax().item()
+        print("viterbi after algo")
+        print(viterbi)
+
+        best_path = []
+        # append EOS_TAG
+        best_path.append(self.tagset.index(EOS_TAG))
+        best_last_tag = viterbi[-2].argmax().item()
 
         #backtrace
-        best_path = [best_last_tag]
+        best_path.append(best_last_tag)
         #for j from n+1 downto 1
-        for j in range(n+1, 0, -1):
+        for j in range(n, 0, -1):
             best_path.append(backpointers[j][best_path[-1]].item())
-
         best_path.reverse()
 
-        return [sentence[i] for i in best_path]  # TODO: you fill this in!
+        print("backpointers")
+        print(backpointers)
+        print("best_path")
+        print(best_path)
+        print(len(best_path))
+
+        return [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
 
     def train(self,
               corpus: TaggedCorpus,
