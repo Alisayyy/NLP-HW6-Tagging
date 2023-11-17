@@ -43,8 +43,8 @@ hmm.train(corpus=icsup, loss=cross_entropy_loss,
 
 log.info("*** A, B matrices after training on icsup (should approximately "
          "match initial params on spreadsheet [transposed])")
-hmm.A = torch.tensor([[0.8, 0.1, 0.1, 0],[0.1, 0.8, 0.1, 0.0],[0.0, 0.0, 0.0, 0.0], [0.5, 0.5, 0.0, 0.0]])   
-hmm.B = torch.tensor([[0.7, 0.2, 0.1],[0.1, 0.2, 0.7],[0.0, 0.0, 0.0],[0.0, 0.0, 0.0]])   
+# hmm.A = torch.tensor([[0.8, 0.1, 0.1, 0],[0.1, 0.8, 0.1, 0.0],[0.0, 0.0, 0.0, 0.0], [0.5, 0.5, 0.0, 0.0]])   
+# hmm.B = torch.tensor([[0.7, 0.2, 0.1],[0.1, 0.2, 0.7],[0.0, 0.0, 0.0],[0.0, 0.0, 0.0]])   
 hmm.printAB()
 
 # Since we used a low tolerance, that should have gotten us about up to the

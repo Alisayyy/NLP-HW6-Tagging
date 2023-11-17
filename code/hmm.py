@@ -206,8 +206,8 @@ class HiddenMarkovModel(nn.Module):
         # a list of length n+2 so that we can assign directly to alpha[j].
         sent = self._integerize_sentence(sentence, corpus) 
 
-        # self.A = self.A + 1e-45
-        # self.B = self.B + 1e-45
+        self.A = self.A + 1e-45
+        self.B = self.B + 1e-45
         #alpha = [torch.empty(self.k) for _ in sent]
         n = len(sent)-2
         alpha = torch.full((len(sent), self.k), -float('inf'))
@@ -218,11 +218,25 @@ class HiddenMarkovModel(nn.Module):
             word = sent[j][0]
             tag = sent[j][1]
             if tag == None:
-                pass
+                #raw data with no tag
+                # for t in range(self.k):
+                #     alpha[j][t] = logsumexp_safe.logsumexp_new(
+                #         alpha[j-1] + torch.log(self.A[:, t]) + torch.log(self.B[t, word]),
+                #         dim=0, keepdim=False, safe_inf=True
+                #     )
+                alpha[j] = logsumexp_safe.logsumexp_new(
+                    alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
+                    dim=0, keepdim=False, safe_inf=True
+                )
             else:
-                alpha[j][tag] = logsumexp_safe.logsumexp_new(alpha[j-1] + torch.log(self.A[:, tag]) + torch.log(self.B[tag,word]),dim=0, keepdim=False, safe_inf=True)
+                alpha[j][tag] = logsumexp_safe.logsumexp_new(
+                    alpha[j-1] + torch.log(self.A[:, tag]) + torch.log(self.B[tag,word]),
+                    dim=0, keepdim=False, safe_inf=True
+                )
 
-        alpha[n+1][self.eos_t] =logsumexp_safe.logsumexp_new(alpha[n] + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True)
+        alpha[n+1][self.eos_t] =logsumexp_safe.logsumexp_new(
+            alpha[n] + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True
+        )
         
         Z = alpha[n+1][self.eos_t]
 
@@ -246,10 +260,6 @@ class HiddenMarkovModel(nn.Module):
         # code conforms to the type annotations ...)
 
         sent = self._integerize_sentence(sentence, corpus)
-        print("sentence")
-        print(sentence)
-        print("sent")
-        print(sent)
         
         n = len(sent)-2
         viterbi = torch.full((len(sent), self.k), -float('inf'))
@@ -257,8 +267,6 @@ class HiddenMarkovModel(nn.Module):
 
         # viterbi[0] = torch.ones(self.k) # viterbi[0] = 0
         viterbi[0][self.tagset.index(BOS_TAG)] = 1
-        print("viterbi")
-        print(viterbi)
         
         for j in range(1, n+1):
             for tj in range(self.k):
@@ -270,9 +278,6 @@ class HiddenMarkovModel(nn.Module):
                 #     if viterbi[j][tj] < viterbi[j-1][ts] * p:
                 #         viterbi[j][tj] = viterbi[j-1][ts] * p
                 #         backpointers[j][tj] = ts
-
-        print("viterbi after algo")
-        print(viterbi)
 
         best_path = []
         # append EOS_TAG
@@ -286,11 +291,11 @@ class HiddenMarkovModel(nn.Module):
             best_path.append(backpointers[j][best_path[-1]].item())
         best_path.reverse()
 
-        print("backpointers")
-        print(backpointers)
-        print("best_path")
-        print(best_path)
-        print(len(best_path))
+        # print("backpointers")
+        # print(backpointers)
+        # print("best_path")
+        # print(best_path)
+        # print(len(best_path))
 
         integerized_sentence = [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
         result_sentence = [tuple(map(str, tword)) for tword in integerized_sentence]
