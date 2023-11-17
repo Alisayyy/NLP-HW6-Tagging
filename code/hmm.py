@@ -8,7 +8,7 @@ import logging
 from math import inf, log, exp, sqrt
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, cast
-import logsumexp_safe
+from logsumexp_safe import logsumexp_new
 
 import torch
 from torch import Tensor as Tensor
@@ -208,33 +208,33 @@ class HiddenMarkovModel(nn.Module):
 
         self.A = self.A + 1e-45
         self.B = self.B + 1e-45
-        #alpha = [torch.empty(self.k) for _ in sent]
+        
         n = len(sent)-2
+
+        #alpha = [torch.empty(self.k) for _ in sent]
         alpha = torch.full((len(sent), self.k), -float('inf'))
 
-        alpha[0][self.bos_t] = 1
+        # alpha_BOS(0) = 1
+        alpha[0][self.bos_t] = 0
 
         for j in range(1, n+1):
             word = sent[j][0]
             tag = sent[j][1]
+            # unsupervised
             if tag == None:
-                #raw data with no tag
-                # for t in range(self.k):
-                #     alpha[j][t] = logsumexp_safe.logsumexp_new(
-                #         alpha[j-1] + torch.log(self.A[:, t]) + torch.log(self.B[t, word]),
-                #         dim=0, keepdim=False, safe_inf=True
-                #     )
-                alpha[j] = logsumexp_safe.logsumexp_new(
+                alpha[j] = logsumexp_new(
                     alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
                     dim=0, keepdim=False, safe_inf=True
                 )
+            # supervised
             else:
-                alpha[j][tag] = logsumexp_safe.logsumexp_new(
+                alpha[j][tag] = logsumexp_new(
                     alpha[j-1] + torch.log(self.A[:, tag]) + torch.log(self.B[tag,word]),
                     dim=0, keepdim=False, safe_inf=True
                 )
-
-        alpha[n+1][self.eos_t] =logsumexp_safe.logsumexp_new(
+        
+        # deal with EOS tag
+        alpha[n+1][self.eos_t] = logsumexp_new(
             alpha[n] + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True
         )
         
@@ -260,49 +260,51 @@ class HiddenMarkovModel(nn.Module):
         # code conforms to the type annotations ...)
 
         sent = self._integerize_sentence(sentence, corpus)
+
+        self.A = self.A + 1e-45
+        self.B = self.B + 1e-45
         
         n = len(sent)-2
+
         viterbi = torch.full((len(sent), self.k), -float('inf'))
         backpointers = torch.zeros(len(sent), self.k, dtype=torch.long)
 
-        # viterbi[0] = torch.ones(self.k) # viterbi[0] = 0
-        viterbi[0][self.tagset.index(BOS_TAG)] = 1
+        #  viterbi_BOS(0) = 1
+        viterbi[0][self.bos_t] = 0
         
         for j in range(1, n+1):
+            word = sent[j][0]
             for tj in range(self.k):
-                viterbi[j][tj], backpointers[j][tj] = max((viterbi[j-1][ts] * self.A[ts, tj] * self.B[tj, sent[j][0]], ts) for ts in range(self.k))
-                # for ts in range(self.k):
-                #     p1 = self.A[ts][tj] 
-                #     p2 = self.B[tj][sent[j][0]]
-                #     p = p1 * p2
-                #     if viterbi[j][tj] < viterbi[j-1][ts] * p:
-                #         viterbi[j][tj] = viterbi[j-1][ts] * p
-                #         backpointers[j][tj] = ts
+                #viterbi[j][tj], backpointers[j][tj] = max((viterbi[j-1][ts] * self.A[ts, tj] * self.B[tj, sent[j][0]], ts) for ts in range(self.k))
+                for ts in range(self.k):
+                     p1 = torch.log(self.A[ts][tj]) 
+                     p2 = torch.log(self.B[tj][sent[j][0]])
+                     p = p1 + p2
+                     if viterbi[j][tj] < viterbi[j-1][ts] + p:
+                         viterbi[j][tj] = viterbi[j-1][ts] + p
+                         backpointers[j][tj] = ts
+
+        # deal with EOS tag
+        for ts in range(self.k):   
+            p1 = torch.log(self.A[ts][self.eos_t]) 
+            if viterbi[n+1][self.eos_t] < viterbi[n][ts] + p1:
+                viterbi[n+1][self.eos_t] = viterbi[n][ts] + p1
+                backpointers[n+1][self.eos_t] = ts
 
         best_path = []
         # append EOS_TAG
-        best_path.append(self.tagset.index(EOS_TAG))
-        best_last_tag = viterbi[-2].argmax().item()
+        best_path.append(self.eos_t)
 
         #backtrace
-        best_path.append(best_last_tag)
         #for j from n+1 downto 1
-        for j in range(n, 0, -1):
-            best_path.append(backpointers[j][best_path[-1]].item())
+        for j in range(n+1, 0, -1):
+            best_path.append(backpointers[j][best_path[-1]])
         best_path.reverse()
-
-        # print("backpointers")
-        # print(backpointers)
-        # print("best_path")
-        # print(best_path)
-        # print(len(best_path))
 
         integerized_sentence = [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
         result_sentence = [tuple(map(str, tword)) for tword in integerized_sentence]
 
         return Sentence(result_sentence)
-
-        # return [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
 
     def train(self,
               corpus: TaggedCorpus,
