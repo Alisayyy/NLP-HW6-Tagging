@@ -8,6 +8,7 @@ import logging
 from math import inf, log, exp, sqrt
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, cast
+import logsumexp_safe
 
 import torch
 from torch import Tensor as Tensor
@@ -200,24 +201,32 @@ class HiddenMarkovModel(nn.Module):
         argument, to help with integerization and check that we're 
         integerizing correctly."""
 
-        sent = self._integerize_sentence(sentence, corpus) 
-
         # The "nice" way to construct alpha is by appending to a List[Tensor] at each
         # step.  But to better match the notation in the handout, we'll instead preallocate
         # a list of length n+2 so that we can assign directly to alpha[j].
-        alpha = [torch.empty(self.k) for _ in sent]
-        n = len(sent)-2
+        sent = self._integerize_sentence(sentence, corpus) 
 
-        # alpha[0] = torch.ones(self.k) # alpha[0] = 0
-        alpha[0][self.tagset.index(BOS_TAG)] = 1
+        # self.A = self.A + 1e-45
+        # self.B = self.B + 1e-45
+        #alpha = [torch.empty(self.k) for _ in sent]
+        n = len(sent)-2
+        alpha = torch.full((len(sent), self.k), -float('inf'))
+
+        alpha[0][self.bos_t] = 1
 
         for j in range(1, n+1):
-            alpha[j] = alpha[j-1] @ self.A * self.B[:, sent[j][0]]
-        
-        Z = alpha[-1].sum() # alpha[n+1] = 0
+            word = sent[j][0]
+            tag = sent[j][1]
+            if tag == None:
+                pass
+            else:
+                alpha[j][tag] = logsumexp_safe.logsumexp_new(alpha[j-1] + torch.log(self.A[:, tag]) + torch.log(self.B[tag,word]),dim=0, keepdim=False, safe_inf=True)
 
+        alpha[n+1][self.eos_t] =logsumexp_safe.logsumexp_new(alpha[n] + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True)
         
-        return torch.log(Z)   # TODO: you fill this in!
+        Z = alpha[n+1][self.eos_t]
+
+        return Z
 
     def viterbi_tagging(self, sentence: Sentence, corpus: TaggedCorpus) -> Sentence:
         """Find the most probable tagging for the given sentence, according to the
@@ -283,7 +292,12 @@ class HiddenMarkovModel(nn.Module):
         print(best_path)
         print(len(best_path))
 
-        return [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
+        integerized_sentence = [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
+        result_sentence = [tuple(map(str, tword)) for tword in integerized_sentence]
+
+        return Sentence(result_sentence)
+
+        # return [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
 
     def train(self,
               corpus: TaggedCorpus,
