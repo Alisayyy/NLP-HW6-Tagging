@@ -272,19 +272,26 @@ class HiddenMarkovModel(nn.Module):
         #  viterbi_BOS(0) = 1
         viterbi[0][self.bos_t] = 0
         
+        # for j in range(1, n+1):
+        #     word = sent[j][0]
+        #     for tj in range(self.k):
+        #         for ts in range(self.k):
+        #              p1 = torch.log(self.A[ts][tj]) 
+        #              p2 = torch.log(self.B[tj][sent[j][0]])
+        #              p = p1 + p2
+        #              if viterbi[j][tj] < viterbi[j-1][ts] + p:
+        #                  viterbi[j][tj] = viterbi[j-1][ts] + p
+        #                  backpointers[j][tj] = ts
+
         for j in range(1, n+1):
             word = sent[j][0]
-            for tj in range(self.k):
-                #viterbi[j][tj], backpointers[j][tj] = max((viterbi[j-1][ts] * self.A[ts, tj] * self.B[tj, sent[j][0]], ts) for ts in range(self.k))
-                for ts in range(self.k):
-                     p1 = torch.log(self.A[ts][tj]) 
-                     p2 = torch.log(self.B[tj][sent[j][0]])
-                     p = p1 + p2
-                     if viterbi[j][tj] < viterbi[j-1][ts] + p:
-                         viterbi[j][tj] = viterbi[j-1][ts] + p
-                         backpointers[j][tj] = ts
+            probabilities = viterbi[j - 1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0)
+            max_probs, argmax_indices = torch.max(probabilities, dim=0)
 
-        # deal with EOS tag
+            viterbi[j] = max_probs
+            backpointers[j] = argmax_indices
+                    
+        #EOS tag, viterbi[n]
         for ts in range(self.k):   
             p1 = torch.log(self.A[ts][self.eos_t]) 
             if viterbi[n+1][self.eos_t] < viterbi[n][ts] + p1:
@@ -314,7 +321,7 @@ class HiddenMarkovModel(nn.Module):
               evalbatch_size: int = 500,
               lr: float = 1.0,
               reg: float = 0.0,
-              save_path: Path = Path("my_hmm.pkl")) -> None:
+              save_path: Path = Path("en_hmm.pkl")) -> None:
         """Train the HMM on the given training corpus, starting at the current parameters.
         The minibatch size controls how often we do an update.
         (Recommended to be larger than 1 for speed; can be inf for the whole training corpus.)
