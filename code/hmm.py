@@ -94,6 +94,7 @@ class HiddenMarkovModel(nn.Module):
         self.tagDict = {}
         for v in self.vocab:
             self.tagDict[self.integerize_word(v)] = torch.zeros(len(self.tagset), dtype=torch.long)
+        # self.vi_prepared = False
         self.init_params()     # create and initialize params
 
     def integerize_word(self, word: Word) -> int:
@@ -216,6 +217,7 @@ class HiddenMarkovModel(nn.Module):
         # The "nice" way to construct alpha is by appending to a List[Tensor] at each
         # step.  But to better match the notation in the handout, we'll instead preallocate
         # a list of length n+2 so that we can assign directly to alpha[j].
+
         sent = self._integerize_sentence(sentence, corpus) 
 
         self.A = self.A + 1e-45
@@ -233,30 +235,23 @@ class HiddenMarkovModel(nn.Module):
             word = sent[j][0]
             tag = sent[j][1]
             # unsupervised
-            # + self.tagDict[word]
             if tag == None:
-                    alpha[j] = logsumexp_new(
-                        alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
-                        dim=0, keepdim=False, safe_inf=True
-                    )
                 # if self.bol_awesome:
                 #     alpha[j] = logsumexp_new(
                 #         alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
                 #         dim=0, keepdim=False, safe_inf=True
                 #     )
                 # else:
-                #     alpha[j] = logsumexp_new(
-                #         alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
-                #         dim=0, keepdim=False, safe_inf=True
-                #     )
+                alpha[j] = logsumexp_new(
+                    alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
+                    dim=0, keepdim=False, safe_inf=True
+                )
             # supervised
             else:
                 alpha[j][tag] = logsumexp_new(
                     alpha[j-1] + torch.log(self.A[:, tag]) + torch.log(self.B[tag,word]),
                     dim=0, keepdim=False, safe_inf=True
                 )
-            if word ==  self.vocab.index("claims"):
-                print(alpha[j])
         
         # deal with EOS tag
         alpha[n+1][self.eos_t] = logsumexp_new(
@@ -265,9 +260,29 @@ class HiddenMarkovModel(nn.Module):
         
         Z = alpha[n+1][self.eos_t]
 
-        # print(alpha)
-
         return Z
+
+    # def prepare_viterbi_tagging(self, corpus: TaggedCorpus) -> Boolean:
+    #     """Preparations that only need to do once, no matter how many times viterbi_tagging is called"""
+    #     # smooth probability for OOV words based on the dev dataset
+    #     prob =  torch.zeros(len(self.tagset), dtype=torch.long)
+    #     for sen in corpus.get_sentences():
+    #         for element in sen:
+    #             word = element[0]
+    #             tag = element[1]
+    #             if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
+    #                 prob[corpus.integerize_tag(tag)] += 1
+    #             else:
+    #                 pass
+    #     prob = prob / torch.sum(prob)
+    #     self.B[:,corpus.integerize_word("_OOV_")] = prob
+        
+    #     # avoid underflowing
+    #     self.A = self.A + 1e-45
+    #     self.B = self.B + 1e-45
+    #     for w in self.tagDict:
+    #         self.tagDict[w] = self.tagDict[w] + 1e-45
+    #     return True
 
     def viterbi_tagging(self, sentence: Sentence, corpus: TaggedCorpus) -> Sentence:
         """Find the most probable tagging for the given sentence, according to the
@@ -286,11 +301,30 @@ class HiddenMarkovModel(nn.Module):
         # expect.  (Running mypy on your code will check that your
         # code conforms to the type annotations ...)
 
-        sent = self._integerize_sentence(sentence, corpus)
+        # if not self.vi_prepared:
+        #     self.vi_prepared = self.prepare_viterbi_tagging(corpus)
 
+        # smooth probability for OOV words based on the dev dataset
+        prob =  torch.zeros(len(self.tagset), dtype=torch.long)
+        for sen in corpus.get_sentences():
+            for element in sen:
+                word = element[0]
+                tag = element[1]
+                if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
+                    prob[corpus.integerize_tag(tag)] += 1
+                else:
+                    pass
+        prob = prob / torch.sum(prob)
+        self.B[:,corpus.integerize_word("_OOV_")] = prob
+        
+        # avoid underflowing
         self.A = self.A + 1e-45
         self.B = self.B + 1e-45
+        for w in self.tagDict:
+            self.tagDict[w] = self.tagDict[w] + 1e-45
         
+        sent = self._integerize_sentence(sentence, corpus)
+
         n = len(sent)-2
 
         viterbi = torch.full((len(sent), self.k), -float('inf'))
@@ -298,32 +332,19 @@ class HiddenMarkovModel(nn.Module):
 
         #  viterbi_BOS(0) = 1
         viterbi[0][self.bos_t] = 0
-        
-        # for j in range(1, n+1):
-        #     word = sent[j][0]
-        #     for tj in range(self.k):
-        #         for ts in range(self.k):
-        #              p1 = torch.log(self.A[ts][tj]) 
-        #              p2 = torch.log(self.B[tj][sent[j][0]])
-        #              p = p1 + p2
-        #              if viterbi[j][tj] < viterbi[j-1][ts] + p:
-        #                  viterbi[j][tj] = viterbi[j-1][ts] + p
-        #                  backpointers[j][tj] = ts
 
         for j in range(1, n+1):
-                word = sent[j][0]
-                probabilities = viterbi[j - 1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word])
-                max_probs, argmax_indices = torch.max(probabilities, dim=0)
-
-                viterbi[j] = max_probs
-                backpointers[j] = argmax_indices
+            word = sent[j][0]
+            probabilities = viterbi[j - 1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word])
+            max_probs, argmax_indices = torch.max(probabilities, dim=0)
+            viterbi[j] = max_probs
+            backpointers[j] = argmax_indices
 
         # if self.bol_awesome:
         #     for j in range(1, n+1):
         #         word = sent[j][0]
         #         probabilities = viterbi[j - 1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word])
         #         max_probs, argmax_indices = torch.max(probabilities, dim=0)
-
         #         viterbi[j] = max_probs
         #         backpointers[j] = argmax_indices
         # else:
@@ -331,13 +352,12 @@ class HiddenMarkovModel(nn.Module):
         #         word = sent[j][0]
         #         probabilities = viterbi[j - 1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0)
         #         max_probs, argmax_indices = torch.max(probabilities, dim=0)
-
         #         viterbi[j] = max_probs
         #         backpointers[j] = argmax_indices
                     
         #EOS tag, viterbi[n]
         for ts in range(self.k):   
-            p1 = torch.log(self.A[ts][self.eos_t]) 
+            p1 = torch.log(self.A[ts][self.eos_t])
             if viterbi[n+1][self.eos_t] < viterbi[n][ts] + p1:
                 viterbi[n+1][self.eos_t] = viterbi[n][ts] + p1
                 backpointers[n+1][self.eos_t] = ts
@@ -388,29 +408,15 @@ class HiddenMarkovModel(nn.Module):
         # in the minibatch at once, and then PyTorch could actually take
         # better advantage of hardware parallelism.
 
-        
-        
-        # self.tagDict[0][0]=1
-        # self.tagDict[0][1]=1
-        # self.tagDict[1][0]=1
-        # self.tagDict[1][1]=1
-        # self.tagDict[2][0]=1
-        # self.tagDict[2][1]=1
-        # self.tagDict[3][2]=1
-        # self.tagDict[4][3]=1
-
-
-        # if self.bol_awesome:
+        # record supervised tags for words appear in the supervised training data
         for sen in corpus.get_sentences():
             for element in sen:
-                if element[1] is not None:
-                    t = self.tagDict[corpus.integerize_word(element[0])]
-                    t[corpus.integerize_tag(element[1])] = 1
+                word = element[0]
+                tag = element[1]
+                if tag is not None:
+                        self.tagDict[corpus.integerize_word(word)][corpus.integerize_tag(tag)] = 1
                 else:
                     pass
-                # print(self.tagDict)
-
-       
 
         assert minibatch_size > 0
         if minibatch_size > len(corpus):
