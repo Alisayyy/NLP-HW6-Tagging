@@ -222,6 +222,8 @@ class HiddenMarkovModel(nn.Module):
 
         self.A = self.A + 1e-45
         self.B = self.B + 1e-45
+        for w in self.tagDict:
+            self.tagDict[w] = self.tagDict[w] + 1e-45
         
         n = len(sent)-2
 
@@ -237,15 +239,15 @@ class HiddenMarkovModel(nn.Module):
             # unsupervised
             if tag == None:
                 # if self.bol_awesome:
-                #     alpha[j] = logsumexp_new(
-                #         alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
-                #         dim=0, keepdim=False, safe_inf=True
-                #     )
-                # else:
                 alpha[j] = logsumexp_new(
-                    alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
+                    alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
                     dim=0, keepdim=False, safe_inf=True
                 )
+                # else:
+                # alpha[j] = logsumexp_new(
+                #     alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
+                #     dim=0, keepdim=False, safe_inf=True
+                # )
             # supervised
             else:
                 alpha[j][tag] = logsumexp_new(
@@ -385,7 +387,7 @@ class HiddenMarkovModel(nn.Module):
               evalbatch_size: int = 500,
               lr: float = 1.0,
               reg: float = 0.0,
-              save_path: Path = Path("en_hmm_awesome.pkl")) -> None:
+              save_path: Path = Path("en_hmm_awesome_v.pkl")) -> None:
         """Train the HMM on the given training corpus, starting at the current parameters.
         The minibatch size controls how often we do an update.
         (Recommended to be larger than 1 for speed; can be inf for the whole training corpus.)
