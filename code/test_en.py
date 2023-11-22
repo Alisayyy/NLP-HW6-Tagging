@@ -10,7 +10,7 @@ from typing import Callable
 
 from corpus import TaggedCorpus
 from eval import eval_tagging, model_cross_entropy, viterbi_error_rate
-from hmm import HiddenMarkovModel
+from hmm import HiddenMarkovModel, AwesomeHMM
 from lexicon import build_lexicon
 import torch
 
@@ -29,7 +29,8 @@ known_vocab = TaggedCorpus(Path("ensup")).vocab    # words seen with supervised 
 
 # Initialize an HMM
 lexicon = build_lexicon(entrain, embeddings_file=Path('words-50.txt'))  # works better with more attributes!
-hmm = HiddenMarkovModel(entrain.tagset, entrain.vocab, lexicon)
+# hmm = HiddenMarkovModel(entrain.tagset, entrain.vocab, lexicon)
+hmm = AwesomeHMM(entrain.tagset, entrain.vocab, lexicon)
 
 # Let's initialize with supervised training to approximately maximize the
 # regularized log-likelihood.  If you want to speed this up, you can increase

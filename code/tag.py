@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 from eval import model_cross_entropy, write_tagging
 from hmm import HiddenMarkovModel
-from crf import CRF
 from lexicon import build_lexicon
 from corpus import TaggedCorpus
 
@@ -139,7 +138,7 @@ def main() -> None:
     model = None
     if args.model is not None:
         if args.crf:
-            model = CRF.load(Path(args.model), gpu=args.gpu)
+            raise NotImplementedError   # you fill this in!
         else:
             model = HiddenMarkovModel.load(Path(args.model), gpu=args.gpu)
         assert model is not None
@@ -152,8 +151,7 @@ def main() -> None:
         tagset = train.tagset
         vocab = train.vocab
         if args.crf:
-            lexicon = build_lexicon(train, embeddings_file=Path(args.lexicon), log_counts=args.awesome)
-            model = CRF(tagset, vocab, lexicon, unigram=args.unigram)
+            raise NotImplementedError   # you fill this in!
         else:
             lexicon = build_lexicon(train, embeddings_file=Path(args.lexicon), log_counts=args.awesome)
             model = HiddenMarkovModel(tagset, vocab, lexicon, unigram=args.unigram)
