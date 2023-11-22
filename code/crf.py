@@ -91,7 +91,11 @@ class CRF(nn.Module):
         assert self.bos_t is not None    # we need this to exist
         assert self.eos_t is not None    # we need this to exist
         self.eye: Tensor = torch.eye(self.k)  # identity matrix, used as a collection of one-hot tag vectors
-        self.tagDict = None
+        self.tagDict = {}
+        for v in self.vocab:
+            self.tagDict[self.integerize_word(v)] = torch.full((len(self.tagset,),), 1e-45)
+        print("self.tagDict")
+        print(self.tagDict)
 
         # self.vi_prepared = False
         self.init_params()     # create and initialize params
@@ -220,7 +224,7 @@ class CRF(nn.Module):
 
         self.A = self.A + 1e-45
         self.B = self.B + 1e-45
-        
+    
         n = len(sent)-2
 
         #alpha = [torch.empty(self.k) for _ in sent]
@@ -234,7 +238,6 @@ class CRF(nn.Module):
             tag = sent[j][1]
             # unsupervised
             if tag == None:
-                # if self.bol_awesome:
                 alpha[j] = logsumexp_new(
                     alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
                     dim=0, keepdim=False, safe_inf=True
@@ -269,78 +272,65 @@ class CRF(nn.Module):
                     self.tagDict[corpus.integerize_word(word)][corpus.integerize_tag(tag)] = 1
 
     def viterbi_tagging(self, sentence: Sentence, corpus: TaggedCorpus) -> Sentence:
-        """Find the most probable tagging for the given sentence, according to the
-        current model."""
+            """Find the most probable tagging for the given sentence, according to the
+            current model."""
 
-        # Note: This code is mainly copied from the forward algorithm.
-        # We just switch to using max, and follow backpointers.
-        # It continues to call the vector alpha, without the ^ that is added
-        # in the handout.
+            # smooth probability for OOV words based on the dev dataset
+            prob =  torch.zeros(len(self.tagset), dtype=torch.long)
+            for sen in corpus.get_sentences():
+                for element in sen:
+                    word = element[0]
+                    tag = element[1]
+                    if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
+                        prob[corpus.integerize_tag(tag)] += 1
+                    else:
+                        pass
+            prob = prob / torch.sum(prob)
+            self.B[:,corpus.integerize_word("_OOV_")] = prob
+            
+            # avoid underflowing
+            self.A = self.A + 1e-45
+            self.B = self.B + 1e-45
+            
+            sent = self._integerize_sentence(sentence, corpus)
 
-        # We'll start by integerizing the input Sentence.
-        # But make sure you deintegerize the words and tags again when
-        # constructing the return value, since the type annotation on
-        # this method says that it returns a Sentence object, and
-        # that's what downstream methods like eval_tagging will
-        # expect.  (Running mypy on your code will check that your
-        # code conforms to the type annotations ...)
+            n = len(sent)-2
 
-        # smooth probability for OOV words based on the dev dataset
-        prob =  torch.zeros(len(self.tagset), dtype=torch.long)
-        for sen in corpus.get_sentences():
-            for element in sen:
-                word = element[0]
-                tag = element[1]
-                if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
-                    prob[corpus.integerize_tag(tag)] += 1
-                else:
-                    pass
-        prob = prob / torch.sum(prob)
-        self.B[:,corpus.integerize_word("_OOV_")] = prob
-        
-        # avoid underflowing
-        self.A = self.A + 1e-45
-        self.B = self.B + 1e-45
-        
-        sent = self._integerize_sentence(sentence, corpus)
+            viterbi = torch.full((len(sent), self.k), -float('inf'))
+            backpointers = torch.zeros(len(sent), self.k, dtype=torch.long)
 
-        n = len(sent)-2
+            #  viterbi_BOS(0) = 1
+            viterbi[0][self.bos_t] = 0
 
-        viterbi = torch.full((len(sent), self.k), -float('inf'))
-        backpointers = torch.zeros(len(sent), self.k, dtype=torch.long)
+            for j in range(1, n+1):
+                word = sent[j][0]
+                probabilities = viterbi[j - 1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word])
+                max_probs, argmax_indices = torch.max(probabilities, dim=0)
+                viterbi[j] = max_probs
+                backpointers[j] = argmax_indices
+                        
+            #EOS tag, viterbi[n]
+            for ts in range(self.k):   
+                p1 = torch.log(self.A[ts][self.eos_t])
+                if viterbi[n+1][self.eos_t] < viterbi[n][ts] + p1:
+                    viterbi[n+1][self.eos_t] = viterbi[n][ts] + p1
+                    backpointers[n+1][self.eos_t] = ts
 
-        #  viterbi_BOS(0) = 1
-        viterbi[0][self.bos_t] = 0
+            best_path = []
+            # append EOS_TAG
+            best_path.append(self.eos_t)
 
-        for j in range(1, n+1):
-            word = sent[j][0]
-            probabilities = viterbi[j - 1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word])
-            max_probs, argmax_indices = torch.max(probabilities, dim=0)
-            viterbi[j] = max_probs
-            backpointers[j] = argmax_indices
+            #backtrace
+            #for j from n+1 downto 1
+            for j in range(n+1, 0, -1):
+                best_path.append(backpointers[j][best_path[-1]])
+            best_path.reverse()
 
-                    
-        #EOS tag, viterbi[n]
-        for ts in range(self.k):   
-            p1 = torch.log(self.A[ts][self.eos_t])
-            if viterbi[n+1][self.eos_t] < viterbi[n][ts] + p1:
-                viterbi[n+1][self.eos_t] = viterbi[n][ts] + p1
-                backpointers[n+1][self.eos_t] = ts
+            integerized_sentence = [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
+            result_sentence = [tuple(map(str, tword)) for tword in integerized_sentence]
 
-        best_path = []
-        # append EOS_TAG
-        best_path.append(self.eos_t)
-
-        #backtrace
-        #for j from n+1 downto 1
-        for j in range(n+1, 0, -1):
-            best_path.append(backpointers[j][best_path[-1]])
-        best_path.reverse()
-
-        integerized_sentence = [(self.vocab[sent[i][0]], self.tagset[best_path[i]]) for i in range(len(sent))]
-        result_sentence = [tuple(map(str, tword)) for tword in integerized_sentence]
-
-        return Sentence(result_sentence)
+            return Sentence(result_sentence)
+    
 
     def train(self,
               corpus: TaggedCorpus,
@@ -373,8 +363,15 @@ class CRF(nn.Module):
         # in the minibatch at once, and then PyTorch could actually take
         # better advantage of hardware parallelism.
 
-        if self.tagDict is None:
-            self.initialize_tag_dict(corpus)
+        # record supervised tags for words appear in the supervised training data
+        for sen in corpus.get_sentences():
+            for element in sen:
+                word = element[0]
+                tag = element[1]
+                if tag is not None:
+                        self.tagDict[corpus.integerize_word(word)][corpus.integerize_tag(tag)] = 1
+                else:
+                    pass
 
         assert minibatch_size > 0
         if minibatch_size > len(corpus):
