@@ -451,8 +451,6 @@ class AwesomeHMM (HiddenMarkovModel):
         self.tagDict = {}
         for v in self.vocab:
             self.tagDict[self.integerize_word(v)] = torch.full((len(self.tagset,),), 1e-45)
-        print("self.tagDict")
-        print(self.tagDict)
             # self.tagDict[self.integerize_word(v)] = torch.zeros(len(self.tagset), dtype=torch.long)
 
     

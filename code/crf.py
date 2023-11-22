@@ -94,8 +94,6 @@ class CRF(nn.Module):
         self.tagDict = {}
         for v in self.vocab:
             self.tagDict[self.integerize_word(v)] = torch.full((len(self.tagset,),), 1e-45)
-        print("self.tagDict")
-        print(self.tagDict)
 
         # self.vi_prepared = False
         self.init_params()     # create and initialize params
@@ -158,7 +156,8 @@ class CRF(nn.Module):
         """Set the transition and emission matrices A and B, based on the current parameters.
         See the "Parametrization" section of the reading handout."""
         
-        A = self._WA     
+        A = F.softmax(self._WA, dim=1)       # run softmax on params to get transition distributions
+                                             # note that the BOS_TAG column will be 0, but each row will sum to 1
         if self.unigram:
             # A is a row vector giving unigram probabilities p(t).
             # We'll just set the bigram matrix to use these as p(t | s)
@@ -172,7 +171,7 @@ class CRF(nn.Module):
             self.A = A
 
         WB = self._ThetaB @ self._E.t()  # inner products of tag weights and word embeddings
-        B = WB         
+        B = F.softmax(WB, dim=1)         # run softmax on those inner products to get emission distributions
         self.B = B.clone()
         self.B[self.eos_t, :] = 0        # but don't guess: EOS_TAG can't emit any column's word (only EOS_WORD)
         self.B[self.bos_t, :] = 0        # same for BOS_TAG (although BOS_TAG will already be ruled out by other factors)
@@ -226,6 +225,7 @@ class CRF(nn.Module):
         self.B = self.B + 1e-45
     
         n = len(sent)-2
+        Z = 0
 
         #alpha = [torch.empty(self.k) for _ in sent]
         alpha = torch.full((len(sent), self.k), -float('inf'))
@@ -238,10 +238,15 @@ class CRF(nn.Module):
             tag = sent[j][1]
             # unsupervised
             if tag == None:
-                alpha[j] = logsumexp_new(
-                    alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
-                    dim=0, keepdim=False, safe_inf=True
+                # alpha[j] = logsumexp_new(
+                #     alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
+                #     dim=0, keepdim=False, safe_inf=True
+                # )
+                alpha[j], Z_word = logsumexp_new(
+                    alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
+                    dim=0, keepdim=False, safe_inf=True, return_Z=True
                 )
+                Z += Z_word
             # supervised
             else:
                 alpha[j][tag] = logsumexp_new(
@@ -254,7 +259,7 @@ class CRF(nn.Module):
             alpha[n] + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True
         )
         
-        Z = alpha[n+1][self.eos_t]
+        Z += alpha[n+1][self.eos_t]
 
         return Z
 
