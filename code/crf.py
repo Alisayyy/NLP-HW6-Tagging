@@ -266,18 +266,18 @@ class CRF(nn.Module):
             current model."""
 
             # smooth probability for OOV words based on the dev dataset
-            if "_OOV_" in self.vocab:
-                prob =  torch.zeros(len(self.tagset), dtype=torch.long)
-                for sen in corpus.get_sentences():
-                    for element in sen:
-                        word = element[0]
-                        tag = element[1]
-                        if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
-                            prob[corpus.integerize_tag(tag)] += 1
-                        else:
-                            pass
-                prob = prob / torch.sum(prob)
-                self.B[:,corpus.integerize_word("_OOV_")] = prob
+            # if "_OOV_" in self.vocab:
+            #     prob =  torch.zeros(len(self.tagset), dtype=torch.long)
+            #     for sen in corpus.get_sentences():
+            #         for element in sen:
+            #             word = element[0]
+            #             tag = element[1]
+            #             if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
+            #                 prob[corpus.integerize_tag(tag)] += 1
+            #             else:
+            #                 pass
+            #     prob = prob / torch.sum(prob)
+            #     self.B[:,corpus.integerize_word("_OOV_")] = prob
             
             # avoid underflowing
             self.A = self.A + 1e-45
