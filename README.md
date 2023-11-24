@@ -80,3 +80,35 @@ But when evulate on held-out dev files, the model finds its own way to learn the
 The perplexity on a held-out raw file is more important because it represents how will the model perform on real-world data.
 
 ## c
+Because dev is used for evaluation of the model. And if V includes word types from dev, the model could potentially learn specific features unique to the dev set, leading to overfitting and reduced generalization to new data which will have biased evaluation. The model should be able to generalize the knowledge learned from training data to perform on unseen set of data.
+
+## d
+
+
+## e
+train on sup:
+
+
+semi-supervised:
+Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%
+
+
+## f
+The semi-supervised training will sample a tag to the word that the model thinks has a high chance of being correct. And this training will give the model more tags which will make the problem easier. So that even we never observe a tag associate with a word in the raw data, the model might be able to guess this tag based on observing the sentence structure in an untagged sentence given the bigram information. 
+
+For example, the model knows nothing about "cavier", but in raw data there exists "the cavier with" and the model knows about the tagging for "the/Det" and "with/Prep". Then it will want to guess "cavier/Noun" in between because it knows the tag bigrams "Det Noun" and "Noun Prep".
+
+## g
+1. If there's too much unseen words in a sentence, the model might not be able to generate useful information given the known tags. When most of the words are unseen, the model is unable to guess from the a minimal number of words with known tags.
+2. The distribution of data in the supervised dataset differs significantly from the distribution of the raw dataset. If the model learns from the labeled data and generalizes its knowledge to the raw data, but the raw data's distribution is substantially different, the model may not gain useful information from raw data and could possibly be misled.
+
+## h
+enraw:
+
+
+ensup + enraw:
+Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%
+
+ensup + ensup + ensup + enraw
+
+# 3
