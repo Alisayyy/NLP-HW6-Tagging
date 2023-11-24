@@ -92,6 +92,7 @@ class CRF(nn.Module):
         assert self.eos_t is not None    # we need this to exist
         self.eye: Tensor = torch.eye(self.k)  # identity matrix, used as a collection of one-hot tag vectors
         self.tagDict = {}
+        # tagDict to record the tags appeared for the word
         for v in self.vocab:
             self.tagDict[self.integerize_word(v)] = torch.full((len(self.tagset,),), 1e-45)
 
@@ -156,7 +157,7 @@ class CRF(nn.Module):
         """Set the transition and emission matrices A and B, based on the current parameters.
         See the "Parametrization" section of the reading handout."""
         
-        A = F.softmax(self._WA, dim=1)       # run softmax on params to get transition distributions
+        A = torch.exp(self._WA)       # run softmax on params to get transition distributions
                                              # note that the BOS_TAG column will be 0, but each row will sum to 1
         if self.unigram:
             # A is a row vector giving unigram probabilities p(t).
@@ -171,7 +172,7 @@ class CRF(nn.Module):
             self.A = A
 
         WB = self._ThetaB @ self._E.t()  # inner products of tag weights and word embeddings
-        B = F.softmax(WB, dim=1)         # run softmax on those inner products to get emission distributions
+        B = torch.exp(WB)         # run softmax on those inner products to get emission distributions
         self.B = B.clone()
         self.B[self.eos_t, :] = 0        # but don't guess: EOS_TAG can't emit any column's word (only EOS_WORD)
         self.B[self.bos_t, :] = 0        # same for BOS_TAG (although BOS_TAG will already be ruled out by other factors)
@@ -202,7 +203,10 @@ class CRF(nn.Module):
 
         When the logging level is set to DEBUG, the alpha and beta vectors and posterior counts
         are logged.  You can check this against the ice cream spreadsheet."""
-        return self.log_forward(sentence, corpus)
+        taggedZ = self.log_forward(sentence, corpus)
+        sent2 = sentence.desupervise()
+        untaggedZ = self.log_forward(sent2, corpus)
+        return taggedZ - untaggedZ
 
 
     @typechecked
@@ -223,9 +227,8 @@ class CRF(nn.Module):
 
         self.A = self.A + 1e-45
         self.B = self.B + 1e-45
-    
+        
         n = len(sent)-2
-        Z = 0
 
         #alpha = [torch.empty(self.k) for _ in sent]
         alpha = torch.full((len(sent), self.k), -float('inf'))
@@ -238,15 +241,10 @@ class CRF(nn.Module):
             tag = sent[j][1]
             # unsupervised
             if tag == None:
-                # alpha[j] = logsumexp_new(
-                #     alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0) + torch.log(self.tagDict[word]),
-                #     dim=0, keepdim=False, safe_inf=True
-                # )
-                alpha[j], Z_word = logsumexp_new(
+                alpha[j] = logsumexp_new(
                     alpha[j-1].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
-                    dim=0, keepdim=False, safe_inf=True, return_Z=True
+                    dim=0, keepdim=False, safe_inf=True
                 )
-                Z += Z_word
             # supervised
             else:
                 alpha[j][tag] = logsumexp_new(
@@ -259,39 +257,27 @@ class CRF(nn.Module):
             alpha[n] + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True
         )
         
-        Z += alpha[n+1][self.eos_t]
+        Z = alpha[n+1][self.eos_t]
 
         return Z
-
-    def initialize_tag_dict(self, corpus: TaggedCorpus) -> None:
-        # Initialize tagDict with supervised tags for words appearing in the training data
-        self.tagDict = {}
-        for v in self.vocab:
-            self.tagDict[self.integerize_word(v)] = torch.full((len(self.tagset),), 1e-45, dtype=torch.long)
-
-        for sen in corpus.get_sentences():
-            for element in sen:
-                word = element[0]
-                tag = element[1]
-                if tag is not None:
-                    self.tagDict[corpus.integerize_word(word)][corpus.integerize_tag(tag)] = 1
 
     def viterbi_tagging(self, sentence: Sentence, corpus: TaggedCorpus) -> Sentence:
             """Find the most probable tagging for the given sentence, according to the
             current model."""
 
             # smooth probability for OOV words based on the dev dataset
-            prob =  torch.zeros(len(self.tagset), dtype=torch.long)
-            for sen in corpus.get_sentences():
-                for element in sen:
-                    word = element[0]
-                    tag = element[1]
-                    if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
-                        prob[corpus.integerize_tag(tag)] += 1
-                    else:
-                        pass
-            prob = prob / torch.sum(prob)
-            self.B[:,corpus.integerize_word("_OOV_")] = prob
+            if "_OOV_" in self.vocab:
+                prob =  torch.zeros(len(self.tagset), dtype=torch.long)
+                for sen in corpus.get_sentences():
+                    for element in sen:
+                        word = element[0]
+                        tag = element[1]
+                        if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
+                            prob[corpus.integerize_tag(tag)] += 1
+                        else:
+                            pass
+                prob = prob / torch.sum(prob)
+                self.B[:,corpus.integerize_word("_OOV_")] = prob
             
             # avoid underflowing
             self.A = self.A + 1e-45
@@ -345,7 +331,7 @@ class CRF(nn.Module):
               evalbatch_size: int = 500,
               lr: float = 1.0,
               reg: float = 0.0,
-              save_path: Path = Path("en_hmm_awesome_v.pkl")) -> None:
+              save_path: Path = Path("ic_crf.pkl")) -> None:
         """Train the HMM on the given training corpus, starting at the current parameters.
         The minibatch size controls how often we do an update.
         (Recommended to be larger than 1 for speed; can be inf for the whole training corpus.)
