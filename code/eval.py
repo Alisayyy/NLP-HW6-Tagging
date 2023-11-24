@@ -8,6 +8,7 @@ from math import nan, exp
 from typing import Counter, Tuple, Optional, Callable, Union
 
 import torch
+from torch import nn as nn
 from tqdm import tqdm # type: ignore
 
 from corpus import Sentence, Word, EOS_WORD, BOS_WORD, OOV_WORD, TaggedCorpus
@@ -101,10 +102,10 @@ def eval_tagging(predicted: Sentence,
     return counts
 
 
-def write_tagging(model_or_tagger: Union[HiddenMarkovModel, Callable[[Sentence], Sentence]],
+def write_tagging(model_or_tagger: Union[nn.Module, Callable[[Sentence], Sentence]],
                         eval_corpus: TaggedCorpus,
                         output_path: Path) -> None:
-    if isinstance(model_or_tagger, HiddenMarkovModel):
+    if isinstance(model_or_tagger, nn.Module):
         tagger = viterbi_tagger(model_or_tagger, eval_corpus)
     else:
         tagger = model_or_tagger
