@@ -96,7 +96,6 @@ class CRF(nn.Module):
         for v in self.vocab:
             self.tagDict[self.integerize_word(v)] = torch.full((len(self.tagset,),), 1e-45)
 
-        # self.vi_prepared = False
         self.init_params()     # create and initialize params
 
     def integerize_word(self, word: Word) -> int:
@@ -331,7 +330,7 @@ class CRF(nn.Module):
               evalbatch_size: int = 500,
               lr: float = 1.0,
               reg: float = 0.0,
-              save_path: Path = Path("ic_crf.pkl")) -> None:
+              save_path: Path = Path("en_crf_test.pkl")) -> None:
         """Train the HMM on the given training corpus, starting at the current parameters.
         The minibatch size controls how often we do an update.
         (Recommended to be larger than 1 for speed; can be inf for the whole training corpus.)
