@@ -91,10 +91,6 @@ class HiddenMarkovModel(nn.Module):
         assert self.bos_t is not None    # we need this to exist
         assert self.eos_t is not None    # we need this to exist
         self.eye: Tensor = torch.eye(self.k)  # identity matrix, used as a collection of one-hot tag vectors
-        # self.tagDict = {}
-        # for v in self.vocab:
-        #     self.tagDict[self.integerize_word(v)] = torch.zeros(len(self.tagset), dtype=torch.long)
-        # self.vi_prepared = False
         self.init_params()     # create and initialize params
 
     def integerize_word(self, word: Word) -> int:
@@ -256,28 +252,6 @@ class HiddenMarkovModel(nn.Module):
 
         return Z
 
-    # def prepare_viterbi_tagging(self, corpus: TaggedCorpus) -> Boolean:
-    #     """Preparations that only need to do once, no matter how many times viterbi_tagging is called"""
-    #     # smooth probability for OOV words based on the dev dataset
-    #     prob =  torch.zeros(len(self.tagset), dtype=torch.long)
-    #     for sen in corpus.get_sentences():
-    #         for element in sen:
-    #             word = element[0]
-    #             tag = element[1]
-    #             if corpus.integerize_word(word) == corpus.integerize_word("_OOV_") and tag is not None:
-    #                 prob[corpus.integerize_tag(tag)] += 1
-    #             else:
-    #                 pass
-    #     prob = prob / torch.sum(prob)
-    #     self.B[:,corpus.integerize_word("_OOV_")] = prob
-        
-    #     # avoid underflowing
-    #     self.A = self.A + 1e-45
-    #     self.B = self.B + 1e-45
-    #     for w in self.tagDict:
-    #         self.tagDict[w] = self.tagDict[w] + 1e-45
-    #     return True
-
     def viterbi_tagging(self, sentence: Sentence, corpus: TaggedCorpus) -> Sentence:
         """Find the most probable tagging for the given sentence, according to the
         current model."""
@@ -295,7 +269,6 @@ class HiddenMarkovModel(nn.Module):
         # expect.  (Running mypy on your code will check that your
         # code conforms to the type annotations ...)
 
-        
         # avoid underflowing
         self.A = self.A + 1e-45
         self.B = self.B + 1e-45
@@ -347,7 +320,7 @@ class HiddenMarkovModel(nn.Module):
               evalbatch_size: int = 500,
               lr: float = 1.0,
               reg: float = 0.0,
-              save_path: Path = Path("en_hmm_awesome_v.pkl")) -> None:
+              save_path: Path = Path("en_hmm_sup.pkl")) -> None:
         """Train the HMM on the given training corpus, starting at the current parameters.
         The minibatch size controls how often we do an update.
         (Recommended to be larger than 1 for speed; can be inf for the whole training corpus.)
@@ -369,16 +342,6 @@ class HiddenMarkovModel(nn.Module):
         # operations that update alpha[j-1] to alpha[j] for all the sentences
         # in the minibatch at once, and then PyTorch could actually take
         # better advantage of hardware parallelism.
-
-        # record supervised tags for words appear in the supervised training data
-        # for sen in corpus.get_sentences():
-        #     for element in sen:
-        #         word = element[0]
-        #         tag = element[1]
-        #         if tag is not None:
-        #                 self.tagDict[corpus.integerize_word(word)][corpus.integerize_tag(tag)] = 1
-        #         else:
-        #             pass
 
         assert minibatch_size > 0
         if minibatch_size > len(corpus):
@@ -439,7 +402,6 @@ class HiddenMarkovModel(nn.Module):
         logger.info(f"Loaded model from {model_path}")
         return model
     
-
 
 
 ###
