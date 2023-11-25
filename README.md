@@ -80,7 +80,7 @@ The perplexity on a held-out raw file is more important because it represents ho
 Because dev is used for evaluation of the model. And if V includes word types from dev, the model could potentially learn specific features unique to the dev set, leading to overfitting and reduced generalization to new data which will have biased evaluation. The model should be able to generalize the knowledge learned from training data to perform on unseen set of data.
 
 ## d
-
+This is because the HMM model only predicts tags based on the previous one tag and the current word. For a known word, it cannnot remember any other information like what tags have been used for it and their relative frequency. It also don't get information from other things like position in a sentence, other tags, etc. However, the compare with other modeling decision, it's relatively efficient and has already consider all possible tagging choice for a given word.
 
 ## e
 only on sup:<br>
@@ -116,6 +116,48 @@ ensup + ensup + ensup + enraw: <br>
 Tagging accuracy: all: 93.094%, known: 95.476%, seen: 72.391%, novel: 66.843%<br>
 Weighting the supervised data more heavily by repeating it multiple times in training seems to be beneficial, possibly because it provides more reliable signals for learning..
 
+## EC
+```
+beta = torch.full((len(sent), self.k), -float('inf'))
+        beta[n+1][self.eos_t] = 0
+        # emission_count = torch.zeros((len(sent), self.k), device=self.device)
+        # transission_count = torch.zeros((len(sent), self.k), device=self.device)
+
+
+        for j in range(n+1, 1, -1):
+            word = sent[j-1][0]
+            tag = sent[j-1][1]
+            # emission_count[word, tag] += logsumexp_new(alpha[j] + beta[j] - Z, dim=0, keepdim=False, safe_inf=True)
+
+            # unsupervised
+            if tag == None:
+                if j == n+1:
+                    beta[j-1] = logsumexp_new(
+                        beta[j].unsqueeze(1) + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True)
+                else: 
+                    beta[j-1] = logsumexp_new(
+                        beta[j].unsqueeze(1) + torch.log(self.A) + torch.log(self.B[:, word]).unsqueeze(0),
+                        dim=0, keepdim=False, safe_inf=True
+                    )
+            # supervised
+            else:
+                if tag == corpus.integerize_tag(Tag("_EOS_TAG_")):
+                    beta[j-1][tag] = logsumexp_new(
+                        beta[j] + torch.log(self.A[:, self.eos_t]), dim=0, keepdim=False, safe_inf=True)
+                else:
+                    beta[j-1][tag] = logsumexp_new(
+                        beta[j] + torch.log(self.A[:, tag]) + torch.log(self.B[tag,word]).unsqueeze(0),
+                        dim=0, keepdim=False, safe_inf=True
+                    )
+
+        # deal with BOS tag
+        
+        beta[0][self.bos_t] = logsumexp_new(
+            beta[1] + torch.log(self.A[:, self.bos_t]), dim=0, keepdim=False, safe_inf=True
+        )
+```
+Above is the implemented backward pass using the variable beta. Beta is used to accumulate the log probabilities of partial sequences from the end of the sequence to the beginning. The backward pass involves similar calculations as the forward pass but is performed in reverse order. It is used to calculate the gradients of the log probabilities with respect to the model parameters, which can then be used for parameter updates during training.
+
 
 # 3
 ## a
@@ -148,7 +190,7 @@ Tagging accuracy: all: 93.044%, known: 95.449%, seen: 72.222%, novel: 66.513%
 Both model performs well on known words. CRF outperforms HMM on seen words by a small margin, but HMM has a slightly better accuracy on novel words compared to CRF.
 
 Error patterns: Both models make errors in predicting the token "OOV." Sometimes CRF predicts it as a noun, while HMM predicts it as a verb. This suggests a challenge in handling out-of-vocabulary tokens.<br>
-The HMM model tends to predict "OOV" as a noun (N), while the CRF model varies between predicting it as a conjunction (C) and a noun (N). These differences highlight the nuanced differences in how each model handles unseen or out-of-vocabulary words.
+The HMM model tends to predict "OOV" as a noun (N) and a verb (V), while the CRF model varies between predicting it as a conjunction (C) and a noun (N). These differences highlight the nuanced differences in how each model handles unseen or out-of-vocabulary words.
 
 ## b
 CRF ensup:<br>
@@ -165,3 +207,10 @@ This is because CRF is a discriminative model that  primarily influenced by the 
 We didn't implemement the biRNN-CRF.
 
 But we assume that it should perform better than the basic CRF because the biRNN-CRF is designed to capture sequential patterns and dependencies. With tag labeling that depends heavily on the the word sequence, biRNN-CRF should perform well in cases where the relationships between neighboring elements are sufficient for accurate labeling.
+
+# 5
+The maximum amount of ice cream I ever eated is 3 (3 seperate ones with different flavors)!~ 
+
+Because my parent bought a refrigerator of ice cream back and there were three flavors that I had never ever tried, so why not?
+
+I didn't get sick. I was a strong and healthy girl at that time.
