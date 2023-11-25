@@ -5,6 +5,7 @@
 before: P_day1(H) =  0.871</br>
 after: P_day1(H) = 0.491</br>
 
+From the forward perspective, the probability of C|Start and H|Start is equal, but the probability of 1|C is 0.7 and 1|H is 0.1. From the backward perspective, the second day is H. The probability of transition from H to H is 0.8 while the probability of transition from C to H is 0.1. Thus, timing them together, the probability that day 1 is hot is roughly 0.5.
 
 ### ii
 before: P_day2(H) = 0.977</br>
@@ -86,11 +87,13 @@ Because dev is used for evaluation of the model. And if V includes word types fr
 
 
 ## e
-train on sup:
+only on sup:<br>
+Tagging accuracy: all: 93.044%, known: 95.449%, seen: 72.222%, novel: 66.513%
 
-
-semi-supervised:
+semi-supervised:<br>
 Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%
+
+It hurts the overall accuracy but improve on novel accuracy. The model might be specializing too much in capturing the novel instances, which might lead to a decrease in accuracy on seen instances.
 
 
 ## f
@@ -103,12 +106,71 @@ For example, the model knows nothing about "cavier", but in raw data there exist
 2. The distribution of data in the supervised dataset differs significantly from the distribution of the raw dataset. If the model learns from the labeled data and generalizes its knowledge to the raw data, but the raw data's distribution is substantially different, the model may not gain useful information from raw data and could possibly be misled.
 
 ## h
-enraw:
+enraw:<br>
+Tagging accuracy: all: 8.410%, known: 5.201%, seen: 3.030%, novel: 56.803% <br>
+Tagging accuracy is quite low across all categories, indicating that relying solely on raw data without any supervision leads to poor performance. This is expected, as raw data may be noisy and lacks labeled examples for the model to learn from.
+
+ensup + enraw:<br>
+Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%<br>
+The supervised data (ensup) helps the model learn more accurate representations, and combining it with raw data helps generalize to unseen examples.
+
+ensup + enraw + ensup: <br>
+Tagging accuracy: all: 93.077%, known: 95.458%, seen: 72.391%, novel: 66.843%
+
+ensup + ensup + ensup + enraw: <br>
+Tagging accuracy: all: 93.094%, known: 95.476%, seen: 72.391%, novel: 66.843%<br>
+Weighting the supervised data more heavily by repeating it multiple times in training seems to be beneficial, possibly because it provides more reliable signals for learning..
 
 
-ensup + enraw:
-Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%
 
-ensup + ensup + ensup + enraw
 
 # 3
+## 3.1
+For awesome, we implement "constraints on inference". We add a tag dictionary tensor for every word type to record all tags appear for this word in the supervised training data. The tensors are initializaed to be 0 (Actually we initialize the values to be 1e-45 instead of 0 to avoid log(0)=-inf in later process). Everytime a tag occurs for this word, its corresponding position in tensor will change to 1. Thus, later when timing this tensor, the probability of tags never appear for the word will have close to zero prabability.
+
+For OOV cases, during viterbi, we first calculate a smoothed probability based on the dev data and update "self.B[:,corpus.integerize_word("_OOV_")]". This is becasue during the training process, parameters in self.B regarding OOV will not learn at all. We also don't want to assign zero probability or equal proability for every tag to OOV words. Thus, we count the frequency of each tag for OOV word and smooth it.
+
+## 3.2
+We train on both ensup and enraw. The one with --awesome tag has:
+
+Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%
+
+and the one without --awesome tag reports:
+
+Tagging accuracy: all: 80.216%, known: 81.635%, seen: 72.391%, novel: 62.814%
+
+The overall, known words, and novel words accuracy have noticable increase. For known words, the improvement is the most significant because the tag dictionary excludes all impossible tags (tags never appear in sup data) for a word when tagging it. The smoothed probability gives better prediction of tags for novel words that never appear in sup or raw.
+
+However, the seen words accuracy decreases with awesome tag. This is because those words all appear with no tag during training so the tag dictionary assigns equal probability to all of them.
+
+
+# 4
+## a
+CRF ensup:<br>
+Tagging accuracy: all: 93.231%, known: 95.669%, seen: 74.411%, novel: 65.456%
+
+HMM ensup: <br>
+Tagging accuracy: all: 93.044%, known: 95.449%, seen: 72.222%, novel: 66.513%
+
+Both model performs well on known words. CRF outperforms HMM on seen words by a small margin, but HMM has a slightly better accuracy on novel words compared to CRF.
+
+Error patterns: Both models make errors in predicting the token "OOV." Sometimes CRF predicts it as a noun, while HMM predicts it as a verb. This suggests a challenge in handling out-of-vocabulary tokens.<br>
+The HMM model tends to predict "OOV" as a noun (N), while the CRF model varies between predicting it as a conjunction (C) and a noun (N). These differences highlight the nuanced differences in how each model handles unseen or out-of-vocabulary words.
+
+
+
+## b
+CRF ensup:<br>
+Tagging accuracy: all: 93.231%, known: 95.669%, seen: 74.411%, novel: 65.456%
+
+CRF ensup+enraw:<br>
+Tagging accuracy: all: 93.244%, known: 95.687%, seen: 74.242%, novel: 65.456%
+
+enraw has no effect on improving the accuracy of the model. The differences in tagging accuracy between the two models seem relatively small. In general, the addition of "enraw" does not appear to have a significant impact on the overall performance of the model, as the accuracy values are similar between the two cases.
+
+This is because CRF is a discriminative model that  primarily influenced by the labeled training data and focus on learning the relationships between input features (words) and output labels (tags).
+
+## c
+We didn't implemement the biRNN-CRF.
+
+But we assume that it should perform better than the basic CRF because the biRNN-CRF is designed to capture sequential patterns and dependencies. With tag labeling that depends heavily on the the word sequence, biRNN-CRF should perform well in cases where the relationships between neighboring elements are sufficient for accurate labeling.
