@@ -36,12 +36,7 @@ and backward probability remain unchanged.
 before: P_day1(H) = 1.0, P_day2(H) = 0.995</br>
 after: P_day1(H) = 0.0, P_day2(H) = 0.557</br>
 
-before when there are two ice-creams at day one, the probability of day one is a hot day is high. the probability of day 2 being a hot day is: P(H|H)*P_day1(H) + P(H|C)*P_day1(C). As p(H|H) and p(H|C) stay the same in the given chart, changing the ice cream in day one results in lowering the probability of a hot day, such that 
-
-P(HHH|133) = p(H|start)*p(1|H) * p(H|H)*p(3|H) * p(H|H)*p(3|H)
-            = 0.5 * 0.1 * 
-P(CHH|133) = p(C|start)*p(1|C) * p(H|C)*p(3|H) * p(H|H)*p(3|H)
-
+During the 10-iteration training, the probability of getting a hot day 1 gets smaller and smaller and finally reaches 0. The probability of day 2 being a hot day also gets smaller. Observed from the data, all other 1-ice-cream day happen relatively consecutively in the middle of the summer. From those data, the model learns that P(1|H) is 1.6E-04, which is extremely small, and tansitions between different states(H to C, C to H) are harder. Thus, the probability of day 1 with 1-ice-cream being hot gets very low and the probability of day 2 being hot also gets smaller since tranbsition from C to H gets harder.  
 
 
 ## b
@@ -71,6 +66,7 @@ Reason:
 - Capture more complex relationships: The more complicated parse on the right can be more expressive in modeling the underlying patterns in the sequence, so for example it can represent the non-terminals.
 - Handle ambiguities or variability
 
+
 # 2
 ## a
 $α_{BOS}(0)$ is the forward probability of being in the start state, $β_{EOS}(n)$ is the starting point for backward algorithm. By setting the start point to 1, the sequence have start and stop state both equals 1 which represent the total probability of the sequence to be 1. The algorithm initalizes the probaility of starting the sequence, so that the distribution is normalized.
@@ -94,7 +90,6 @@ semi-supervised:<br>
 Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%
 
 It hurts the overall accuracy but improve on novel accuracy. The model might be specializing too much in capturing the novel instances, which might lead to a decrease in accuracy on seen instances.
-
 
 ## f
 The semi-supervised training will sample a tag to the word that the model thinks has a high chance of being correct. And this training will give the model more tags which will make the problem easier. So that even we never observe a tag associate with a word in the raw data, the model might be able to guess this tag based on observing the sentence structure in an untagged sentence given the bigram information. 
@@ -122,15 +117,13 @@ Tagging accuracy: all: 93.094%, known: 95.476%, seen: 72.391%, novel: 66.843%<br
 Weighting the supervised data more heavily by repeating it multiple times in training seems to be beneficial, possibly because it provides more reliable signals for learning..
 
 
-
-
 # 3
-## 3.1
+## a
 For awesome, we implement "constraints on inference". We add a tag dictionary tensor for every word type to record all tags appear for this word in the supervised training data. The tensors are initializaed to be 0 (Actually we initialize the values to be 1e-45 instead of 0 to avoid log(0)=-inf in later process). Everytime a tag occurs for this word, its corresponding position in tensor will change to 1. Thus, later when timing this tensor, the probability of tags never appear for the word will have close to zero prabability.
 
 For OOV cases, during viterbi, we first calculate a smoothed probability based on the dev data and update "self.B[:,corpus.integerize_word("_OOV_")]". This is becasue during the training process, parameters in self.B regarding OOV will not learn at all. We also don't want to assign zero probability or equal proability for every tag to OOV words. Thus, we count the frequency of each tag for OOV word and smooth it.
 
-## 3.2
+## b
 We train on both ensup and enraw. The one with --awesome tag has:
 
 Tagging accuracy: all: 92.856%, known: 95.252%, seen: 70.875%, novel: 66.909%
@@ -156,8 +149,6 @@ Both model performs well on known words. CRF outperforms HMM on seen words by a 
 
 Error patterns: Both models make errors in predicting the token "OOV." Sometimes CRF predicts it as a noun, while HMM predicts it as a verb. This suggests a challenge in handling out-of-vocabulary tokens.<br>
 The HMM model tends to predict "OOV" as a noun (N), while the CRF model varies between predicting it as a conjunction (C) and a noun (N). These differences highlight the nuanced differences in how each model handles unseen or out-of-vocabulary words.
-
-
 
 ## b
 CRF ensup:<br>
