@@ -29,8 +29,9 @@ known_vocab = TaggedCorpus(Path("ensup")).vocab    # words seen with supervised 
 
 # Initialize an HMM
 lexicon = build_lexicon(entrain, embeddings_file=Path('words-50.txt'))  # works better with more attributes!
-# hmm = HiddenMarkovModel(entrain.tagset, entrain.vocab, lexicon)
-hmm = AwesomeHMM(entrain.tagset, entrain.vocab, lexicon)
+hmm = HiddenMarkovModel(entrain.tagset, entrain.vocab, lexicon)
+#hmm = AwesomeHMM(entrain.tagset, entrain.vocab, lexicon)
+#hmm = HiddenMarkovModel.load(Path("en_hmm_awesome.pkl"), gpu=False)
 
 # Let's initialize with supervised training to approximately maximize the
 # regularized log-likelihood.  If you want to speed this up, you can increase
@@ -46,7 +47,6 @@ hmm.train(corpus=ensup, loss=loss_sup, minibatch_size=30, evalbatch_size=10000, 
 loss_dev = lambda model: viterbi_error_rate(model, eval_corpus=endev, known_vocab=known_vocab)
 hmm.train(corpus=entrain, loss=loss_dev, minibatch_size=30, evalbatch_size=10000, lr=0.0001, reg=0)
 
-# hmm = HiddenMarkovModel.load(Path("en_hmm_awesome_v.pkl"), gpu=False)
 # More detailed look at the first 10 sentences in the held-out corpus,
 # including Viterbi tagging.
 for m, sentence in enumerate(endev):
